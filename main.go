@@ -8,33 +8,50 @@ import (
 	"os"
 
 	"github.com/drosocode/atvremote/internal/cert"
-	pairing "github.com/drosocode/atvremote/internal/v1/pairing"
+	"github.com/drosocode/atvremote/internal/remote"
+	"github.com/drosocode/atvremote/internal/v1/command"
+	"github.com/drosocode/atvremote/internal/v1/pairing"
 )
 
 func main() {
-	cert.CreateCertificate("androidtv-remote", []string{"192.168.1.20"})
+	v1_test()
+}
 
+func v1_test() {
+	ip := "192.168.1.20"
+	// create certificates
+	cert.CreateCertificate("androidtv-remote", []string{ip}, "cert.pem", "key.pem")
+
+	// load certificates
 	cert, err := tls.LoadX509KeyPair("cert.pem", "key.pem")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	p := pairing.New("192.168.1.20", 6467, &cert)
+	// start a new pairing process
+	p := pairing.New(ip, 6467, &cert)
 
 	err = p.Connect()
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	// prompts the user to enter the pairing code
 	reader := bufio.NewReader(os.Stdin)
 	fmt.Print("Enter code: ")
 	code, _ := reader.ReadString('\n')
 
-	secret, err := p.Secret(code)
+	// finish the pairing process
+	err = p.Secret(code)
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println(secret)
 
-	//secret := "="
+	// connect in command mode
+	cmd := command.New(ip, 6466, &cert)
+	cmd.Connect()
+	// send volume down keypress
+	cmd.SendKey(remote.RemoteKeyCode_KEYCODE_VOLUME_DOWN)
+	// open netflix
+	cmd.SendIntent("com.netflix.ninja/.MainActivity")
 }

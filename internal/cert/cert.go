@@ -6,27 +6,26 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
-	"log"
+	"errors"
 	"math/big"
 	"net"
 	"os"
 	"time"
 )
 
-func CreateCertificate(name string, hosts []string) {
+func CreateCertificate(name string, hosts []string, certPath string, keyPath string) error {
 	priv, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
-		log.Fatalf("Failed to generate private key: %v", err)
+		return errors.New("Failed to generate private key: " + err.Error())
 	}
 
 	keyUsage := x509.KeyUsageDigitalSignature
 	keyUsage |= x509.KeyUsageKeyEncipherment
 
-	// cert.serialNumber = '01' + crypto. randomBytes(19).toString("hex");
 	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
 	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
 	if err != nil {
-		log.Fatalf("Failed to generate serial number: %v", err)
+		return errors.New("Failed to generate serial number: " + err.Error())
 	}
 
 	template := x509.Certificate{
@@ -48,7 +47,6 @@ func CreateCertificate(name string, hosts []string) {
 		BasicConstraintsValid: true,
 	}
 
-	//hosts := strings.Split(*host, ",")
 	for _, h := range hosts {
 		if ip := net.ParseIP(h); ip != nil {
 			template.IPAddresses = append(template.IPAddresses, ip)
@@ -57,42 +55,36 @@ func CreateCertificate(name string, hosts []string) {
 		}
 	}
 
-	/*
-		template.IsCA = true
-		template.KeyUsage |= x509.KeyUsageCertSign
-	*/
-
 	derBytes, err := x509.CreateCertificate(rand.Reader, &template, &template, &priv.PublicKey, priv)
 	if err != nil {
-		log.Fatalf("Failed to create certificate: %v", err)
+		return errors.New("Failed to create certificate: " + err.Error())
 	}
 
-	certOut, err := os.Create("cert.pem")
+	certOut, err := os.Create(certPath)
 	if err != nil {
-		log.Fatalf("Failed to open cert.pem for writing: %v", err)
+		return errors.New("Failed to open cert.pem for writing: " + err.Error())
 	}
 	if err := pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes}); err != nil {
-		log.Fatalf("Failed to write data to cert.pem: %v", err)
+		return errors.New("Failed to write data to cert.pem: " + err.Error())
 	}
 	if err := certOut.Close(); err != nil {
-		log.Fatalf("Error closing cert.pem: %v", err)
+		return errors.New("Error closing cert.pem: " + err.Error())
 	}
-	log.Print("wrote cert.pem\n")
 
-	keyOut, err := os.OpenFile("key.pem", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+	keyOut, err := os.OpenFile(keyPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
-		log.Fatalf("Failed to open key.pem for writing: %v", err)
-		return
+		return errors.New("Failed to open key.pem for writing: " + err.Error())
 	}
 	privBytes, err := x509.MarshalPKCS8PrivateKey(priv)
 	if err != nil {
-		log.Fatalf("Unable to marshal private key: %v", err)
+		return errors.New("Unable to marshal private key: " + err.Error())
 	}
 	if err := pem.Encode(keyOut, &pem.Block{Type: "PRIVATE KEY", Bytes: privBytes}); err != nil {
-		log.Fatalf("Failed to write data to key.pem: %v", err)
+		return errors.New("Failed to write data to key.pem: " + err.Error())
 	}
 	if err := keyOut.Close(); err != nil {
-		log.Fatalf("Error closing key.pem: %v", err)
+		return errors.New("Error closing key.pem: " + err.Error())
 	}
-	log.Print("wrote key.pem\n")
+
+	return nil
 }

@@ -128,7 +128,7 @@ func (p *Pairing) Connect() error {
 	return nil
 }
 
-func (p *Pairing) Secret(code string) (string, error) {
+func (p *Pairing) Secret(code string) error {
 	defer p.Connection.Close()
 	// ------------- Secret Request --------------------
 	crt, _ := x509.ParseCertificate(p.Certificates.Certificate[0])
@@ -150,16 +150,18 @@ func (p *Pairing) Secret(code string) (string, error) {
 
 	sec := Message{ProtocolVersion: 1, Payload: SecretRequest{Secret: secret}, Type: 40, Status: 200}
 	if err := p.send(&sec); err != nil {
-		return "", errors.New("pair - secret request - send: " + err.Error())
+		return errors.New("pair - secret request - send: " + err.Error())
 	}
 
 	resp, err := p.read()
 	if err != nil {
-		return "", errors.New("pair - secret request - receive: " + err.Error())
+		return errors.New("pair - secret request - receive: " + err.Error())
 	}
 	if resp == nil || resp.Type != 41 {
-		return "", errors.New("pair - secret request - receive: nil or invalid response")
+		return errors.New("pair - secret request - receive: nil or invalid response")
 	}
 
-	return resp.Payload.(map[string]interface{})["secret"].(string), nil
+	// secret := resp.Payload.(map[string]interface{})["secret"].(string)
+
+	return nil
 }
