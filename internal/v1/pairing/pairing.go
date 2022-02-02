@@ -2,14 +2,14 @@ package pairing
 
 import (
 	"crypto/rsa"
-	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/base64"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"strconv"
+
+	"github.com/drosocode/atvremote/internal/remote"
 )
 
 func getSize(s int) []byte {
@@ -26,8 +26,6 @@ func (p *Pairing) send(data *Message) error {
 	if err != nil {
 		return err
 	}
-	//conn.Write([]byte(strconv.Itoa(len(raw))))
-	//_, err = conn.Write(raw)
 
 	size := getSize(len(raw))
 
@@ -83,7 +81,7 @@ func (p *Pairing) Connect() error {
 
 	// ------------- Pairing Request --------------------
 
-	data := Message{ProtocolVersion: 1, Payload: PariringRequest{ServiceName: "androidtvremote", ClientName: "interface Web"}, Type: 10, Status: 200}
+	data := Message{ProtocolVersion: 1, Payload: PariringRequest{ServiceName: "androidtvremote", ClientName: "androidtvremote"}, Type: 10, Status: 200}
 
 	if err = p.send(&data); err != nil {
 		return errors.New("pair - pairing request - send: " + err.Error())
@@ -98,7 +96,7 @@ func (p *Pairing) Connect() error {
 	}
 
 	// ------------- Options Request --------------------
-	opt := Message{ProtocolVersion: 1, Payload: OptionsRequest{OutputEncodings: []OptionEncoding{OptionEncoding{SymbolLength: 4, Type: 3}}, InputEncodings: []OptionEncoding{OptionEncoding{SymbolLength: 4, Type: 3}}, PreferredRole: 1}, Type: 20, Status: 200}
+	opt := Message{ProtocolVersion: 1, Payload: OptionsRequest{OutputEncodings: []OptionEncoding{{SymbolLength: 4, Type: 3}}, InputEncodings: []OptionEncoding{{SymbolLength: 4, Type: 3}}, PreferredRole: 1}, Type: 20, Status: 200}
 	if err = p.send(&opt); err != nil {
 		return errors.New("pair - options request - send: " + err.Error())
 	}
@@ -131,22 +129,11 @@ func (p *Pairing) Connect() error {
 func (p *Pairing) Secret(code string) error {
 	defer p.Connection.Close()
 	// ------------- Secret Request --------------------
+
 	crt, _ := x509.ParseCertificate(p.Certificates.Certificate[0])
 	serverPublicKey := p.Connection.ConnectionState().PeerCertificates[0].PublicKey.(*rsa.PublicKey)
 	clientPublicKey := crt.PublicKey.(*rsa.PublicKey)
-
-	hash := sha256.New()
-	hash.Write(clientPublicKey.N.Bytes())
-	//hash.Write([]byte(strconv.Itoa(clientPublicKey.E)))
-	hash.Write([]byte{1, 0, 1})
-
-	hash.Write(serverPublicKey.N.Bytes())
-	//hash.Write([]byte(strconv.Itoa(serverPublicKey.E)))
-	hash.Write([]byte{1, 0, 1})
-
-	codeEnd, _ := hex.DecodeString(code[2:4])
-	hash.Write(codeEnd)
-	secret := base64.StdEncoding.EncodeToString(hash.Sum(nil))
+	secret := base64.StdEncoding.EncodeToString(remote.GetHash(serverPublicKey, clientPublicKey, code[2:4]))
 
 	sec := Message{ProtocolVersion: 1, Payload: SecretRequest{Secret: secret}, Type: 40, Status: 200}
 	if err := p.send(&sec); err != nil {
