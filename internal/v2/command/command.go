@@ -1,0 +1,255 @@
+package command
+
+import (
+	"crypto/tls"
+	"errors"
+	"strconv"
+	"time"
+
+	"github.com/drosocode/atvremote/internal/remote"
+	pb "github.com/drosocode/atvremote/internal/v2/proto"
+	"google.golang.org/protobuf/proto"
+)
+
+type Command struct {
+	Buffer       []byte
+	BufferSize   int
+	Connection   *tls.Conn
+	Certificates *tls.Certificate
+	Address      string
+	Port         int
+	Read         bool
+	RemoteData   RemoteData
+	Error        error
+}
+
+type RemoteData struct {
+	Powered struct {
+		Powered    bool
+		UpdateDate time.Time
+	}
+	App struct {
+		CurrentApp string
+		UpdateDate time.Time
+	}
+	Volume struct {
+		Level       uint32
+		Maximum     uint32
+		Muted       bool
+		PlayerModel string
+		UpdateDate  time.Time
+	}
+	Device struct {
+		Model      string
+		Vendor     string
+		Version    string
+		UpdateDate time.Time
+	}
+}
+
+func (c *Command) processData(read_size int, size_to_read int, buffer *[]byte, total_data *[]byte) int {
+
+	if read_size < size_to_read {
+		// not enough data
+		size_to_read -= read_size
+		data := make([]byte, read_size)
+		copy(data, (*buffer)[0:read_size])
+		(*total_data) = append((*total_data), data...)
+
+	} else {
+
+		data := make([]byte, size_to_read)
+		copy(data, (*buffer)[0:size_to_read])
+
+		c.handleData(append((*total_data), data...))
+
+		if read_size > size_to_read {
+			// too much data
+			remaining := read_size - size_to_read - 1
+			size_to_read = int(c.Buffer[size_to_read]) - remaining
+
+			(*total_data) = make([]byte, remaining)
+			copy((*total_data), (*buffer)[size_to_read+1:read_size])
+
+		} else {
+			// exact amount of data
+			(*total_data) = make([]byte, 0)
+			size_to_read = 0
+		}
+	}
+
+	return size_to_read
+}
+
+func (c *Command) readLoop() {
+	buffer := make([]byte, 512)
+	var total_data []byte
+	size_to_read := 0
+
+	for c.Read {
+
+		read_size, err := c.Connection.Read(buffer)
+		if err != nil {
+			c.Error = err
+			break
+		}
+
+		if size_to_read == 0 {
+			size_to_read = int(buffer[0])
+			if read_size > 1 {
+				// if there is more than 1 byte, the size is the first byte of the data
+				buffer = buffer[1:]
+				size_to_read = c.processData(read_size-1, size_to_read, &buffer, &total_data)
+			}
+		} else {
+			size_to_read = c.processData(read_size, size_to_read, &buffer, &total_data)
+		}
+
+	}
+}
+
+func (c *Command) write(data pb.RemoteMessage) error {
+	raw, err := proto.Marshal(&data)
+	if err != nil {
+		return errors.New("v2 - write message - marshal:" + err.Error())
+	}
+
+	_, err = c.Connection.Write([]byte{byte(len(raw))})
+	if err != nil {
+		return errors.New("v2 - write message - send 1:" + err.Error())
+	}
+	_, err = c.Connection.Write(raw)
+	if err != nil {
+		return errors.New("v2 - write message - send 2:" + err.Error())
+	}
+
+	return nil
+}
+
+func New(addr string, port int, certs *tls.Certificate) Command {
+	return Command{Buffer: make([]byte, 512), Address: addr, Port: port, Certificates: certs, Read: true, RemoteData: RemoteData{}, Error: nil}
+}
+
+func (c *Command) Connect() error {
+	config := &tls.Config{Certificates: []tls.Certificate{*c.Certificates}, InsecureSkipVerify: true}
+
+	conn, err := tls.Dial("tcp", c.Address+":"+strconv.Itoa(c.Port), config)
+	if err != nil {
+		return errors.New("command - connexion: " + err.Error())
+	}
+	c.Connection = conn
+
+	state := conn.ConnectionState()
+	for !state.HandshakeComplete {
+	}
+
+	go c.readLoop()
+
+	c.sendConfiguration()
+
+	return nil
+}
+
+func (c *Command) handleData(raw []byte) {
+	data := pb.RemoteMessage{}
+	err := proto.Unmarshal(raw, &data)
+	if err != nil {
+		c.Error = err
+		return
+	}
+
+	switch {
+	case data.RemoteSetActive != nil:
+		err = c.write(pb.RemoteMessage{
+			RemoteSetActive: &pb.RemoteSetActive{
+				Active: 622,
+			},
+		})
+	case data.RemotePingRequest != nil:
+		err = c.write(pb.RemoteMessage{
+			RemotePingResponse: &pb.RemotePingResponse{
+				Val1: data.RemotePingRequest.Val1,
+			},
+		})
+	case data.RemoteImeKeyInject != nil:
+		c.RemoteData.App.CurrentApp = data.RemoteImeKeyInject.AppInfo.AppPackage
+		c.RemoteData.App.UpdateDate = time.Now()
+	case data.RemoteStart != nil:
+		c.RemoteData.Powered.Powered = data.RemoteStart.Started
+		c.RemoteData.Powered.UpdateDate = time.Now()
+	case data.RemoteSetVolumeLevel != nil:
+		c.RemoteData.Volume.Level = data.RemoteSetVolumeLevel.VolumeLevel
+		c.RemoteData.Volume.Maximum = data.RemoteSetVolumeLevel.VolumeMax
+		c.RemoteData.Volume.Muted = data.RemoteSetVolumeLevel.VolumeMuted
+		c.RemoteData.Volume.PlayerModel = data.RemoteSetVolumeLevel.PlayerModel
+		c.RemoteData.Volume.UpdateDate = time.Now()
+	case data.RemoteConfigure != nil:
+		c.RemoteData.Device.Model = data.RemoteConfigure.DeviceInfo.Model
+		c.RemoteData.Device.Vendor = data.RemoteConfigure.DeviceInfo.Vendor
+		c.RemoteData.Device.Version = data.RemoteConfigure.DeviceInfo.AppVersion
+		c.RemoteData.Device.UpdateDate = time.Now()
+	}
+
+	if err != nil {
+		c.Error = err
+	}
+}
+
+func (c *Command) GetData() (RemoteData, error) {
+	start := time.Now()
+	c.sendConfiguration()
+	// wait until data is available
+	for start.After(c.RemoteData.Powered.UpdateDate) || start.After(c.RemoteData.Device.UpdateDate) || start.After(c.RemoteData.App.UpdateDate) {
+		// timeout after 3 seconds
+		if time.Since(start) > time.Second*3 {
+			return c.RemoteData, errors.New("unable to fully retreive data")
+		}
+	}
+	return c.RemoteData, nil
+}
+
+func (c *Command) sendConfiguration() error {
+	err := c.write(pb.RemoteMessage{
+		RemoteConfigure: &pb.RemoteConfigure{
+			Code1: 622,
+			DeviceInfo: &pb.RemoteDeviceInfo{
+				Model:       "androidtvremote",
+				Vendor:      "drosocode",
+				Unknown1:    1,
+				Unknown2:    "1",
+				PackageName: "androitv-remote",
+				AppVersion:  "1.0.0",
+			},
+		},
+	})
+	if err != nil {
+		return err
+	}
+	err = c.write(pb.RemoteMessage{
+		RemoteSetActive: &pb.RemoteSetActive{
+			Active: 622,
+		},
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *Command) SendKey(keycode remote.RemoteKeyCode) error {
+	return c.write(pb.RemoteMessage{
+		RemoteKeyInject: &pb.RemoteKeyInject{
+			KeyCode:   pb.RemoteKeyCode(keycode),
+			Direction: pb.RemoteDirection_SHORT,
+		},
+	})
+}
+
+func (c *Command) OpenLink(link string) error {
+	return c.write(pb.RemoteMessage{
+		RemoteAppLinkLaunchRequest: &pb.RemoteAppLinkLaunchRequest{
+			AppLink: link,
+		},
+	})
+}

@@ -13,6 +13,7 @@ import (
 	"github.com/drosocode/atvremote/internal/v1/pairing"
 
 	c2 "github.com/drosocode/atvremote/internal/v2/command"
+	//pv2 "github.com/drosocode/atvremote/internal/v2/pairing"
 )
 
 func main() {
@@ -62,14 +63,13 @@ func v1_test() {
 func v2_test() {
 	ip := "192.168.1.20"
 	// create certificates
-	//cert.CreateCertificate("androidtv-remote", []string{ip}, "cert.pem", "key.pem")
+	//cert.CreateCertificate("androidtvremote", []string{ip}, "cert.pem", "key.pem")
 
 	// load certificates
 	cert, err := tls.LoadX509KeyPair("cert.pem", "key.pem")
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	/*
 		// start a new pairing process
 		p := pv2.New(ip, 6467, &cert)
@@ -90,12 +90,16 @@ func v2_test() {
 			log.Fatal(err)
 		}
 	*/
-
 	// connect in command mode
 	cmd := c2.New(ip, 6466, &cert)
-	cmd.Connect()
+	err = cmd.Connect()
+	if err != nil {
+		log.Fatal(err)
+	}
 	// send volume down keypress
-	//cmd.SendKey(remote.RemoteKeyCode_KEYCODE_VOLUME_DOWN)
+	fmt.Println(cmd.SendKey(remote.RemoteKeyCode_KEYCODE_VOLUME_DOWN))
 	// open netflix
-	//cmd.SendIntent("com.netflix.ninja/.MainActivity")
+	fmt.Println(cmd.OpenLink("https://www.netflix.com/title/*"))
+	// get data
+	fmt.Println(cmd.GetData())
 }
