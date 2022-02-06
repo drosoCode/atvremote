@@ -18,6 +18,7 @@ func Execute() {
 	cfg := parseFlags()
 
 	if cfg.Pair {
+		// pairing mode
 		if cfg.Version == 1 {
 			p := v1p.New(cfg.IP, 6467, &cfg.Certificates)
 			err := p.Connect()
@@ -41,6 +42,7 @@ func Execute() {
 			}
 		}
 	} else {
+		// command mode
 		if cfg.Version == 1 {
 			cmd := v1c.New(cfg.IP, 6466, &cfg.Certificates)
 			err := cmd.Connect()
@@ -79,6 +81,7 @@ func Execute() {
 	}
 }
 
+// prompts the user to enter the pairing code
 func enterCode() string {
 	reader := bufio.NewReader(os.Stdin)
 	fmt.Print("Enter code: ")

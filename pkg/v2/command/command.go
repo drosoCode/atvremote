@@ -23,6 +23,7 @@ type Command struct {
 	Error        error
 }
 
+// struct of available infos for the android tv device
 type RemoteData struct {
 	Powered struct {
 		Powered    bool      `json:"powered"`
@@ -47,6 +48,8 @@ type RemoteData struct {
 	} `json:"device"`
 }
 
+// recreate a complete protobuf message from multiple chunks
+// each new message is sent to handleData
 func (c *Command) processData(read_size int, size_to_read int, buffer *[]byte, total_data *[]byte) int {
 
 	if read_size < size_to_read {
@@ -81,6 +84,7 @@ func (c *Command) processData(read_size int, size_to_read int, buffer *[]byte, t
 	return size_to_read
 }
 
+// reading loop to read data from the android tv device
 func (c *Command) readLoop() {
 	buffer := make([]byte, 512)
 	var total_data []byte
@@ -108,6 +112,7 @@ func (c *Command) readLoop() {
 	}
 }
 
+// send a remote message to the android tv device
 func (c *Command) write(data pb.RemoteMessage) error {
 	raw, err := proto.Marshal(&data)
 	if err != nil {
@@ -126,10 +131,12 @@ func (c *Command) write(data pb.RemoteMessage) error {
 	return nil
 }
 
+// Create a new command object with the ip and port of the android tv device and a certificate
 func New(addr string, port int, certs *tls.Certificate) Command {
 	return Command{Buffer: make([]byte, 512), Address: addr, Port: port, Certificates: certs, Read: true, RemoteData: RemoteData{}, Error: nil}
 }
 
+// Connect to the android tv device
 func (c *Command) Connect() error {
 	config := &tls.Config{Certificates: []tls.Certificate{*c.Certificates}, InsecureSkipVerify: true}
 
@@ -150,11 +157,12 @@ func (c *Command) Connect() error {
 	return nil
 }
 
+// handle message from the android tv device
 func (c *Command) handleData(raw []byte) {
 	data := pb.RemoteMessage{}
 	err := proto.Unmarshal(raw, &data)
 	if err != nil {
-		c.Error = err
+		// ignore invalid protobuf messages
 		return
 	}
 
@@ -195,6 +203,7 @@ func (c *Command) handleData(raw []byte) {
 	}
 }
 
+// Return informations on the current android tv device
 func (c *Command) GetData() (RemoteData, error) {
 	start := time.Now()
 	c.sendConfiguration()
@@ -208,6 +217,7 @@ func (c *Command) GetData() (RemoteData, error) {
 	return c.RemoteData, nil
 }
 
+// send a configuration message to the android tv device
 func (c *Command) sendConfiguration() error {
 	err := c.write(pb.RemoteMessage{
 		RemoteConfigure: &pb.RemoteConfigure{
@@ -237,6 +247,7 @@ func (c *Command) sendConfiguration() error {
 	return nil
 }
 
+// emulate a key press on the android tv device
 func (c *Command) SendKey(keycode common.RemoteKeyCode) error {
 	return c.write(pb.RemoteMessage{
 		RemoteKeyInject: &pb.RemoteKeyInject{
@@ -246,6 +257,9 @@ func (c *Command) SendKey(keycode common.RemoteKeyCode) error {
 	})
 }
 
+// open a link on the android tv device
+// if the links matches the one defined in an app's manifest, the app will be launched
+// else, the link will open in a browser
 func (c *Command) OpenLink(link string) error {
 	return c.write(pb.RemoteMessage{
 		RemoteAppLinkLaunchRequest: &pb.RemoteAppLinkLaunchRequest{

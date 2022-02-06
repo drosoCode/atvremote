@@ -2,6 +2,7 @@ package common
 
 type RemoteKeyCode int32
 
+// list of keycodes to use with SendKey
 const (
 	RemoteKeyCode_KEYCODE_UNKNOWN                       RemoteKeyCode = 0
 	RemoteKeyCode_KEYCODE_SOFT_LEFT                     RemoteKeyCode = 1

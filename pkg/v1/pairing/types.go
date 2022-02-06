@@ -1,5 +1,7 @@
 package pairing
 
+// list of types used for the v1 pariring step
+
 type Message struct {
 	ProtocolVersion int         `json:"protocol_version"`
 	Payload         interface{} `json:"payload"`

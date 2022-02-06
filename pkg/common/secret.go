@@ -6,6 +6,8 @@ import (
 	"encoding/hex"
 )
 
+// Returns the hash of the server and client public keys's modulus and exponent
+// used to create the pairing secret
 func GetHash(serverPublicKey *rsa.PublicKey, clientPublicKey *rsa.PublicKey, code string) []byte {
 
 	hash := sha256.New()

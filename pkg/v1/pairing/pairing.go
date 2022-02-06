@@ -1,5 +1,7 @@
 package pairing
 
+// pairing package for the v1 protocol
+
 import (
 	"crypto/rsa"
 	"crypto/tls"
@@ -12,6 +14,7 @@ import (
 	"github.com/drosocode/atvremote/pkg/common"
 )
 
+// return the size of a message on 4 bytes
 func getSize(s int) []byte {
 	return []byte{
 		byte(s >> 24 & 0xFF),
@@ -21,6 +24,7 @@ func getSize(s int) []byte {
 	}
 }
 
+// send a message to the android tv device
 func (p *Pairing) send(data *Message) error {
 	raw, err := json.Marshal(data)
 	if err != nil {
@@ -37,6 +41,7 @@ func (p *Pairing) send(data *Message) error {
 	return nil
 }
 
+// receive a message from the android tv
 func (p *Pairing) read() (*Message, error) {
 	len, err := p.Connection.Read(p.Buffer)
 	if err != nil {
@@ -62,10 +67,12 @@ type Pairing struct {
 	Port         int
 }
 
+// Create a new pairing object with the ip and port of the android tv device and a certificate
 func New(addr string, port int, certs *tls.Certificate) Pairing {
 	return Pairing{Buffer: make([]byte, 512), Address: addr, Port: port, Certificates: certs}
 }
 
+// Connect to the android tv device and start the pairing process
 func (p *Pairing) Connect() error {
 	config := &tls.Config{Certificates: []tls.Certificate{*p.Certificates}, InsecureSkipVerify: true}
 
@@ -126,6 +133,7 @@ func (p *Pairing) Connect() error {
 	return nil
 }
 
+// Send the secret to the android tv device and finish the pairing process
 func (p *Pairing) Secret(code string) error {
 	defer p.Connection.Close()
 	// ------------- Secret Request --------------------

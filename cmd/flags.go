@@ -21,6 +21,7 @@ type config struct {
 	Info         bool
 }
 
+// parse flags from the cli, do some checks and return a config struct
 func parseFlags() config {
 	cert := flag.String("cert", "cert.pem", "path to certificate file")
 	key := flag.String("key", "key.pem", "path to key file")
@@ -78,6 +79,7 @@ func parseFlags() config {
 	return config{Version: *version, Certificates: certs, IP: *ip, Pair: *pair, Command: common.ParseKeys(*command), Open: *open, Link: *link, Info: *info}
 }
 
+// check if the paths to the certs exists
 func checkPath(cert string, key string) error {
 	if _, err := os.Stat(cert); err != nil && os.IsNotExist(err) {
 		return errors.New("path to certificate file does not exists")

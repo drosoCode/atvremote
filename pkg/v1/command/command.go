@@ -1,5 +1,7 @@
 package command
 
+// command package for the v1 protocol
+
 import (
 	"crypto/tls"
 	"errors"
@@ -17,10 +19,12 @@ type Command struct {
 	Port         int
 }
 
+// Create a new command object with the ip and port of the android tv device and a certificate
 func New(addr string, port int, certs *tls.Certificate) Command {
 	return Command{Buffer: make([]byte, 512), Address: addr, Port: port, Certificates: certs}
 }
 
+// Connect to the android tv device
 func (c *Command) Connect() error {
 	config := &tls.Config{Certificates: []tls.Certificate{*c.Certificates}, InsecureSkipVerify: true}
 
@@ -37,6 +41,7 @@ func (c *Command) Connect() error {
 	return nil
 }
 
+// read data from the android tv device
 func (c *Command) read() ([]byte, error) {
 	len, err := c.Connection.Read(c.Buffer)
 	if err != nil {
@@ -49,6 +54,8 @@ func (c *Command) read() ([]byte, error) {
 	return c.Buffer[0:len], nil
 }
 
+// send a configuration message to the android tv device
+// this message must be sent before each command
 func (c *Command) sendConfiguration() error {
 	data := []byte{1, 0, 0, 21, 0, 0, 0, 1, 0, 0, 0, 1, 32, 3, 0, 0, 0, 0, 0, 0, 4, 116, 101, 115, 116}
 	c.Connection.Write(data)
@@ -71,6 +78,7 @@ func (c *Command) sendConfiguration() error {
 	return nil
 }
 
+// emulate a key press on the android tv device
 func (c *Command) SendKey(keycode common.RemoteKeyCode) error {
 	err := c.sendConfiguration()
 	if err != nil {
@@ -96,6 +104,7 @@ func (c *Command) SendKey(keycode common.RemoteKeyCode) error {
 	return nil
 }
 
+// converts a string to a byte array
 func text2byte(text string) []byte {
 	arr := []byte{}
 	for _, c := range text {
@@ -104,6 +113,9 @@ func text2byte(text string) []byte {
 	return arr
 }
 
+// send an intent to the android tv device
+// can be used to start an app with a specific activity
+// ex: com.netflix.ninja/.MainActivity
 func (c *Command) SendIntent(intent string) error {
 	err := c.sendConfiguration()
 	if err != nil {

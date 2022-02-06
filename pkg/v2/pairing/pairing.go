@@ -1,5 +1,8 @@
 package pairing
 
+// pairing package for the v2 protocol
+// remote services version >= 5
+
 import (
 	"crypto/rsa"
 	"crypto/tls"
@@ -23,6 +26,7 @@ type Pairing struct {
 	Port         int
 }
 
+// reads data from the android tv device
 func (p *Pairing) read(size int) ([]byte, error) {
 	var back []byte
 	if size != 0 {
@@ -57,6 +61,7 @@ func (p *Pairing) read(size int) ([]byte, error) {
 	return p.Buffer[0:p.BufferSize], nil
 }
 
+// reads a pairing message from the android tv device
 func (p *Pairing) readMessage() (*pb.PairingMessage, error) {
 	d, err := p.read(0)
 	if err != nil {
@@ -71,6 +76,7 @@ func (p *Pairing) readMessage() (*pb.PairingMessage, error) {
 	return &rsp, nil
 }
 
+// writes a pairing message to the android tv device
 func (p *Pairing) write(data pb.PairingMessage) error {
 	raw, err := proto.Marshal(&data)
 	if err != nil {
@@ -89,10 +95,12 @@ func (p *Pairing) write(data pb.PairingMessage) error {
 	return nil
 }
 
+// Create a new pairing object with the ip and port of the android tv device and a certificate
 func New(addr string, port int, certs *tls.Certificate) Pairing {
 	return Pairing{Buffer: make([]byte, 512), Address: addr, Port: port, Certificates: certs}
 }
 
+// Connect to the android tv device and start the pairing process
 func (p *Pairing) Connect() error {
 	config := &tls.Config{Certificates: []tls.Certificate{*p.Certificates}, InsecureSkipVerify: true}
 
@@ -178,6 +186,7 @@ func (p *Pairing) Connect() error {
 	return nil
 }
 
+// Send the secret to the android tv device and finish the pairing process
 func (p *Pairing) Secret(code string) error {
 	defer p.Connection.Close()
 	// ------------- Secret Request --------------------

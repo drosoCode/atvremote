@@ -13,6 +13,8 @@ import (
 	"time"
 )
 
+// Generates tls certificates
+// You must supply the CommonName (name), the alternative names (hosts), the path to output the certificate file (certPath) and the path to output the private key file (keyPath)
 func CreateCertificate(name string, hosts []string, certPath string, keyPath string) error {
 	priv, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
