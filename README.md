@@ -17,7 +17,7 @@ Then, you can send a list of keypress like this (this sould open the settings) `
 
 ## Usage
 
-You can use this project as a library (see the godoc page) or directly in cli (see the releases page).
+You can use this project as a library (see the [godoc](https://pkg.go.dev/github.com/drosocode/atvremote) page) or directly in cli (see the [releases](https://github.com/drosoCode/atvremote/releases) page).
 In CLI mode, you must at least specify the IP to your android tv box.
 Here is the list of the supported flags:
 
@@ -34,8 +34,8 @@ Here is the list of the supported flags:
 |info|No|None|Print a json object of the device's infos (V2 Only)|`-info`|
 
 ### Additional information
- - Command flag: a string with alphanumeric characters will automaticaly be converted to keypresses. You can also send some specific keypresses defined in `pkg/common/types.go` prefixed with `KEYCODE_` and separated with semicolons. There are some shortcuts for the most common keys (UP, DOWN, LEFT, RIGHT, HOME, BACK, VOLP, VOLM, MUTE, PWR, ENTER).
- For examle this string `a;UP;bc;KEYCODE_TV_INPUT_HDMI_1` will be parsed as `[RemoteKeyCode_KEYCODE_A, RemoteKeyCode_KEYCODE_DPAD_UP, RemoteKeyCode_KEYCODE_B, RemoteKeyCode_KEYCODE_C, KEYCODE_TV_INPUT_HDMI_1]` (see `pkg/common/parsekey.go` for more info).
+ - Command flag: a string with alphanumeric characters will automaticaly be converted to keypresses. You can also send some specific keypresses defined in [pkg/common/types.go](https://pkg.go.dev/github.com/drosocode/atvremote/pkg/common#pkg-types) prefixed with `KEYCODE_` and separated with semicolons. There are some shortcuts for the most common keys (UP, DOWN, LEFT, RIGHT, HOME, BACK, VOLP, VOLM, MUTE, PWR, ENTER).
+ For examle this string `a;UP;bc;KEYCODE_TV_INPUT_HDMI_1` will be parsed as `[RemoteKeyCode_KEYCODE_A, RemoteKeyCode_KEYCODE_DPAD_UP, RemoteKeyCode_KEYCODE_B, RemoteKeyCode_KEYCODE_C, KEYCODE_TV_INPUT_HDMI_1]` (see [pkg/common/parsekey.go](https://github.com/drosoCode/atvremote/blob/main/pkg/common/parsekey.go#L13) for more info).
  - Open flag: an activity in in the format `yourpackagename/.activityname`.
  - Link flag: You can start an app using a deeplink defined in its appmanifest (like described [here](https://developer.android.com/training/app-links/deep-linking)). By default, if no deeplink is found, the link will open in a browser.
 
