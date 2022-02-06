@@ -7,10 +7,12 @@ import (
 	"errors"
 	"strconv"
 
-	"github.com/drosocode/atvremote/internal/remote"
-	pb "github.com/drosocode/atvremote/internal/v2/proto"
+	"github.com/drosocode/atvremote/pkg/common"
+	pb "github.com/drosocode/atvremote/pkg/v2/proto"
 	"google.golang.org/protobuf/proto"
 )
+
+//go:generate protoc --proto_path=../proto --go_out=../proto --go_opt=paths=source_relative pairingmessage.proto remotemessage.proto
 
 type Pairing struct {
 	Buffer       []byte
@@ -183,7 +185,7 @@ func (p *Pairing) Secret(code string) error {
 	crt, _ := x509.ParseCertificate(p.Certificates.Certificate[0])
 	serverPublicKey := p.Connection.ConnectionState().PeerCertificates[0].PublicKey.(*rsa.PublicKey)
 	clientPublicKey := crt.PublicKey.(*rsa.PublicKey)
-	secret := remote.GetHash(serverPublicKey, clientPublicKey, code[2:6])
+	secret := common.GetHash(serverPublicKey, clientPublicKey, code[2:6])
 
 	err := p.write(pb.PairingMessage{
 		PairingSecret: &pb.PairingSecret{

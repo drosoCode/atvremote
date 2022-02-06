@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/drosocode/atvremote/internal/remote"
+	"github.com/drosocode/atvremote/pkg/common"
 )
 
 type Command struct {
@@ -71,7 +71,7 @@ func (c *Command) sendConfiguration() error {
 	return nil
 }
 
-func (c *Command) SendKey(keycode remote.RemoteKeyCode) error {
+func (c *Command) SendKey(keycode common.RemoteKeyCode) error {
 	err := c.sendConfiguration()
 	if err != nil {
 		return err

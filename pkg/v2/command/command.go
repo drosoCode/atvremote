@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/drosocode/atvremote/internal/remote"
-	pb "github.com/drosocode/atvremote/internal/v2/proto"
+	"github.com/drosocode/atvremote/pkg/common"
+	pb "github.com/drosocode/atvremote/pkg/v2/proto"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -25,26 +25,26 @@ type Command struct {
 
 type RemoteData struct {
 	Powered struct {
-		Powered    bool
-		UpdateDate time.Time
-	}
+		Powered    bool      `json:"powered"`
+		UpdateDate time.Time `json:"updateDate"`
+	} `json:"powered"`
 	App struct {
-		CurrentApp string
-		UpdateDate time.Time
-	}
+		CurrentApp string    `json:"currentApp"`
+		UpdateDate time.Time `json:"updateDate"`
+	} `json:"app"`
 	Volume struct {
-		Level       uint32
-		Maximum     uint32
-		Muted       bool
-		PlayerModel string
-		UpdateDate  time.Time
-	}
+		Level       uint32    `json:"level"`
+		Maximum     uint32    `json:"maximum"`
+		Muted       bool      `json:"muted"`
+		PlayerModel string    `json:"playerModel"`
+		UpdateDate  time.Time `json:"updateDate"`
+	} `json:"volume"`
 	Device struct {
-		Model      string
-		Vendor     string
-		Version    string
-		UpdateDate time.Time
-	}
+		Model      string    `json:"model"`
+		Vendor     string    `json:"vendor"`
+		Version    string    `json:"version"`
+		UpdateDate time.Time `json:"updateDate"`
+	} `json:"device"`
 }
 
 func (c *Command) processData(read_size int, size_to_read int, buffer *[]byte, total_data *[]byte) int {
@@ -237,7 +237,7 @@ func (c *Command) sendConfiguration() error {
 	return nil
 }
 
-func (c *Command) SendKey(keycode remote.RemoteKeyCode) error {
+func (c *Command) SendKey(keycode common.RemoteKeyCode) error {
 	return c.write(pb.RemoteMessage{
 		RemoteKeyInject: &pb.RemoteKeyInject{
 			KeyCode:   pb.RemoteKeyCode(keycode),

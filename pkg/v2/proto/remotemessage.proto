@@ -1,7 +1,7 @@
 // remotemessage.proto
 syntax = "proto3";
 package remote;
-option go_package = "github.com/drosocode/atvremote/internal/v2/proto";
+option go_package = "github.com/drosocode/atvremote/pkg/v2/proto";
 
 message RemoteAppLinkLaunchRequest {
   string app_link = 1;

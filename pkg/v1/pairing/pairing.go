@@ -9,7 +9,7 @@ import (
 	"errors"
 	"strconv"
 
-	"github.com/drosocode/atvremote/internal/remote"
+	"github.com/drosocode/atvremote/pkg/common"
 )
 
 func getSize(s int) []byte {
@@ -133,7 +133,7 @@ func (p *Pairing) Secret(code string) error {
 	crt, _ := x509.ParseCertificate(p.Certificates.Certificate[0])
 	serverPublicKey := p.Connection.ConnectionState().PeerCertificates[0].PublicKey.(*rsa.PublicKey)
 	clientPublicKey := crt.PublicKey.(*rsa.PublicKey)
-	secret := base64.StdEncoding.EncodeToString(remote.GetHash(serverPublicKey, clientPublicKey, code[2:4]))
+	secret := base64.StdEncoding.EncodeToString(common.GetHash(serverPublicKey, clientPublicKey, code[2:4]))
 
 	sec := Message{ProtocolVersion: 1, Payload: SecretRequest{Secret: secret}, Type: 40, Status: 200}
 	if err := p.send(&sec); err != nil {

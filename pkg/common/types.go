@@ -1,4 +1,4 @@
-package remote
+package common
 
 type RemoteKeyCode int32
 
